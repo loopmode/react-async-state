@@ -1,6 +1,6 @@
 {
   "name": "@loopmode/async-state",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "lib/index.js",
   "scripts": {
     "docs": "esdoc",
