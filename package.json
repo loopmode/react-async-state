@@ -1,6 +1,6 @@
 {
   "name": "@loopmode/async-state",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "lib/index.js",
   "scripts": {
     "docs": "esdoc",
@@ -18,7 +18,8 @@
   "license": "ISC",
   "peerDependencies": {
     "classnames": ">=2",
-    "react": ">=15"
+    "react": ">=15",
+    "prop-types": ">=15"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
@@ -32,6 +33,7 @@
     "classnames": "^2.2.5",
     "esdoc": "^0.5.2",
     "react": "^15.3.1",
-    "rimraf": "^2.6.1"
-  }
+    "rimraf": "^2.6.1",
+    "prop-types": "^15.5.10"
+  },
 }
