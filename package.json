@@ -1,6 +1,6 @@
 {
   "name": "@loopmode/async-state",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "lib/index.js",
   "scripts": {
     "docs": "esdoc",
@@ -17,9 +17,8 @@
   "author": "Jovica Aleksic <jovica.aleksic@loopmode.de>",
   "license": "ISC",
   "peerDependencies": {
-    "classnames": ">=2",
-    "react": ">=15",
-    "prop-types": ">=15"
+    "prop-types": ">=15",
+    "react": ">=15"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
@@ -30,10 +29,12 @@
     "babel-preset-react": "^6.24.1",
     "babel-preset-stage-1": "^6.24.1",
     "babel-register": "^6.24.1",
-    "classnames": "^2.2.5",
     "esdoc": "^0.5.2",
     "prop-types": "^15.5.10",
     "react": "^15.3.1",
     "rimraf": "^2.6.1"
+  },
+  "dependencies": {
+    "classnames": "^2.2.5"
   }
 }
