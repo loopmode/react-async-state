@@ -13,6 +13,7 @@ export default class AsyncState extends Component {
         successClass: PropTypes.string,
         errorClass: PropTypes.string,
         children: PropTypes.element,
+        initialPending: PropTypes.bool,
         pendingProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
         pendingGroupProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
         group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),
@@ -31,7 +32,7 @@ export default class AsyncState extends Component {
         return React.Children.only(this.props.children);
     }
     state = {
-        isPending: false,
+        isPending: this.initialPending,
         isPendingGroup: false,
         hintSuccess: false,
         hintError: false,
