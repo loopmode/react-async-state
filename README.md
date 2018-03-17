@@ -27,8 +27,9 @@ render() {
         </div>
     );
 }
-refresh() {
-    return window.fetch('/data.json');
+async refresh() {
+    // have the handle function be async, or return a promise
+    // return new Promise((resolve) => setTimeout(resolve, 1000))
 }
     
 ```
@@ -39,7 +40,7 @@ Why would you need this? Because you don't want to manually keep pending states 
 
 Now you can write:
 
-````javascript
+```javascript
 import React, { Component } from 'react';
 import AsyncState from '@loopmode/react-async-state';
 
@@ -62,7 +63,7 @@ export class MyComponent extends Component {
 
 ```
 
-Compare it to manual handling of pending state:
+Compare that to manual handling of pending state:
 
 ```javascript
 import React, { Component } from 'react';
