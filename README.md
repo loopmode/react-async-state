@@ -5,9 +5,9 @@ A wrapper component that indicates the pending state of a child callback.
 It works as a plain wrapper around anything with a click handler that returns a promise.
 While the promise is pending, the wrapped components receives one or more flags to indicate that (default: `isPending` and `disabled`).
 
-<img src="./react-async-state-success.gif" />
+<img src="https://github.com/loopmode/react-async-state/raw/master/react-async-state-success.gif" />
 
-<img src="./react-async-state-error.gif" />
+<img src="https://github.com/loopmode/react-async-state/raw/master/react-async-state-error.gif" />
 
 
 What's needed on your side is
@@ -36,10 +36,35 @@ refresh() {
 ## Why
 
 Why would you need this? Because you don't want to manually keep pending states all over the place.
-It basically saves you from implementing this over and over:
+
+Now you can write:
+
+````javascript
+import React, { Component } from 'react';
+import AsyncState from '@loopmode/react-async-state';
+
+export class MyComponent extends Component {
+    render() {
+        return (
+            <div>
+                <AsyncState>
+                    <button onClick={this.load}>load</button>
+                </AsyncState>
+                <AsyncState>
+                    <button onClick={this.save}>save</button>
+                </AsyncState>
+            </div>
+        );
+    }
+    load = () => someApi.load();
+    save = () => someApi.save();
+}
+
+```
+
+Compare it to manual handling of pending state:
 
 ```javascript
-
 import React, { Component } from 'react';
 
 export class MyComponent extends Component {
@@ -129,30 +154,6 @@ export class MyComponent extends Component {
 
 ```
 
-Instead of duplicating lots of boilerplate all over the place, you could instead do the very same thing with this code:
-
-````javascript
-import React, { Component } from 'react';
-import AsyncState from '@loopmode/react-async-state';
-
-export class MyComponent extends Component {
-    render() {
-        return (
-            <div>
-                <AsyncState>
-                    <button onClick={this.load}>load</button>
-                </AsyncState>
-                <AsyncState>
-                    <button onClick={this.save}>save</button>
-                </AsyncState>
-            </div>
-        );
-    }
-    load = () => someApi.load();
-    save = () => someApi.save();
-}
-
-```
 
 
 ## TODO
