@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base data-ice="baseUrl">
+  <title data-ice="title">API Document</title>
+  <link type="text/css" rel="stylesheet" href="css/style.css">
+  <link type="text/css" rel="stylesheet" href="css/prettify-tomorrow.css">
+  <script src="script/prettify/prettify.js"></script>
+  
+  
+  <script src="script/manual.js"></script>
+</head>
+<body class="layout-container" data-ice="rootContainer">
+
+<header>
+  <a href="./">Home</a>
+  
+  <a href="identifiers.html">Reference</a>
+  <a href="source.html">Source</a>
+  
+  
+  <div class="search-box">
+  <span>
+    <img src="./image/search.png">
+    <span class="search-input-edge"></span><input class="search-input"><span class="search-input-edge"></span>
+  </span>
+    <ul class="search-result"></ul>
+  </div>
+</header>
+
+<nav class="navigation" data-ice="nav"><div>
+  <ul>
+    
+  <li data-ice="doc"><span data-ice="kind" class="kind-class">C</span><span data-ice="name"><span><a href="class/src/AsyncState.js~AsyncState.html">AsyncState</a></span></span></li>
+</ul>
+</div>
+</nav>
+
+<div class="content" data-ice="content"><div data-ice="index" class="github-markdown"><h1 id="async-state">async-state</h1>
+<p>A wrapper component that indicates the pending state of a child callback.</p>
+<p>It works as a plain wrapper around anything with a click handler that returns a promise.
+While the promise is pending, the wrapped components receives one or more flags to indicate that (default: <code>isPending</code> and <code>disabled</code>).</p>
+<p><img src="https://github.com/loopmode/react-async-state/raw/master/react-async-state-success.gif"></p>
+<p><img src="https://github.com/loopmode/react-async-state/raw/master/react-async-state-error.gif"></p>
+<p>What&apos;s needed on your side is</p>
+<ul>
+<li>the click callback returns a promise</li>
+<li>the wrapped component understands how to show pending state (e.g. show a spinner when it receives the prop <code>showSpinner</code>)</li>
+<li>the wrapped component understands how to show success or error state based on CSS classes (e.g <code>success</code>: show in green, <code>danger</code>: show in red)</li>
+</ul>
+<pre><code class="lang-javascript"><code class="source-code prettyprint">render() {
+    return (
+        &lt;div&gt;
+            ...
+            &lt;AsyncState&gt;
+                &lt;button onClick={this.refresh}&gt;refresh&lt;/button&gt;
+            &lt;/AsyncState&gt;
+            ...
+        &lt;/div&gt;
+    );
+}
+refresh() {
+    return window.fetch(&apos;/data.json&apos;);
+}</code>
+</code></pre>
+<h2 id="why">Why</h2>
+<p>Why would you need this? Because you don&apos;t want to manually keep pending states all over the place.</p>
+<p>Now you can write:</p>
+<pre><code class="lang-`javascript"><code class="source-code prettyprint">import React, { Component } from &apos;react&apos;;
+import AsyncState from &apos;@loopmode/react-async-state&apos;;
+
+export class MyComponent extends Component {
+    render() {
+        return (
+            &lt;div&gt;
+                &lt;AsyncState&gt;
+                    &lt;button onClick={this.load}&gt;load&lt;/button&gt;
+                &lt;/AsyncState&gt;
+                &lt;AsyncState&gt;
+                    &lt;button onClick={this.save}&gt;save&lt;/button&gt;
+                &lt;/AsyncState&gt;
+            &lt;/div&gt;
+        );
+    }
+    load = () =&gt; someApi.load();
+    save = () =&gt; someApi.save();
+}</code>
+</code></pre>
+<p>Compare it to manual handling of pending state:</p>
+<pre><code class="lang-javascript"><code class="source-code prettyprint">import React, { Component } from &apos;react&apos;;
+
+export class MyComponent extends Component {
+    state = {
+        isLoading: false,
+        showLoadSuccess: false,
+        showLoadError: false,
+        isSaving: false,
+        showSaveSuccess: false,
+        showSaveError: false,
+    }
+    componentDidMount() {
+        this._isMounted = true;
+    }
+    componentWillUnmount() {
+        this._isMounted = false;
+    }
+    render() {
+        return (
+            &lt;div&gt;
+                &lt;button onClick={this.load}&gt;load&lt;/button&gt;
+                &lt;button onClick={this.save}&gt;save&lt;/button&gt;
+            &lt;/div&gt;
+        );
+    }
+    load = () =&gt; {
+        this.setState({
+            isLoading: true
+            showLoadSuccess: false,
+            showLoadError: false
+        });
+        someApi.load()
+            .then(() =&gt; {
+                this._isMounted &amp;&amp; this.setState({
+                    isLoading: false,
+                    showLoadSuccess: true
+                });
+                setTimeout(() =&gt; {
+                    this._isMounted &amp;&amp; this.setState({
+                        showLoadSuccess: false,
+                    })
+                }, 1000)
+            })
+            .catch(error =&gt; {
+                this._isMounted &amp;&amp; this.setState({
+                    isLoading: false,
+                    showLoadError: true
+                });
+                setTimeout(() =&gt; {
+                    this._isMounted &amp;&amp; this.setState({
+                        showLoadError: false,
+                    })
+                }, 1000)
+            })
+    }
+    save = () =&gt; {
+        this.setState({
+            isSaving: true
+            showSaveSuccess: false,
+            showSaveError: false
+        });
+        someApi.save()
+            .then(() =&gt; {
+                this._isMounted &amp;&amp; this.setState({
+                    isSaving: false,
+                    showSaveSuccess: true
+                });
+                setTimeout(() =&gt; {
+                    this._isMounted &amp;&amp; this.setState({
+                        showSaveSuccess: false,
+                    })
+                }, 1000)
+            })
+            .catch(error =&gt; {
+                this._isMounted &amp;&amp; this.setState({
+                    isSaving: false,
+                    showSaveError: true
+                });
+                setTimeout(() =&gt; {
+                    this._isMounted &amp;&amp; this.setState({
+                        showSaveError: false,
+                    })
+                }, 1000)
+            })
+    }
+}</code>
+</code></pre>
+<h2 id="todo">TODO</h2>
+<ul>
+<li>proper documentation</li>
+<li>add tests</li>
+<li>add examples</li>
+</ul>
+</div>
+</div>
+
+<footer class="footer">
+  Generated by <a href="https://esdoc.org">ESDoc<span data-ice="esdocVersion">(0.5.2)</span><img src="./image/esdoc-logo-mini-black.png"></a>
+</footer>
+
+<script src="script/search_index.js"></script>
+<script src="script/search.js"></script>
+<script src="script/pretty-print.js"></script>
+<script src="script/inherited-summary.js"></script>
+<script src="script/test-summary.js"></script>
+<script src="script/inner-link.js"></script>
+<script src="script/patch-for-local.js"></script>
+</body>
+</html>

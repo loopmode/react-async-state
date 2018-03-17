@@ -1,0 +1,31 @@
+{
+  "coverage": "0%",
+  "expectCount": 18,
+  "actualCount": 0,
+  "files": {
+    "src/AsyncState.js": {
+      "expectCount": 18,
+      "actualCount": 0,
+      "undocumentLines": [
+        9,
+        31,
+        136,
+        40,
+        46,
+        52,
+        65,
+        22,
+        140,
+        92,
+        98,
+        10,
+        147,
+        62,
+        159,
+        59,
+        34,
+        153
+      ]
+    }
+  }
+}
