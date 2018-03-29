@@ -60,14 +60,15 @@ While the promise is pending, the wrapped components receives one or more flags 
         &lt;/div&gt;
     );
 }
-refresh() {
-    return window.fetch(&apos;/data.json&apos;);
+async refresh() {
+    // have the handle function be async, or return a promise
+    // return new Promise((resolve) =&gt; setTimeout(resolve, 1000))
 }</code>
 </code></pre>
 <h2 id="why">Why</h2>
 <p>Why would you need this? Because you don&apos;t want to manually keep pending states all over the place.</p>
 <p>Now you can write:</p>
-<pre><code class="lang-`javascript"><code class="source-code prettyprint">import React, { Component } from &apos;react&apos;;
+<pre><code class="lang-javascript"><code class="source-code prettyprint">import React, { Component } from &apos;react&apos;;
 import AsyncState from &apos;@loopmode/react-async-state&apos;;
 
 export class MyComponent extends Component {
@@ -87,7 +88,7 @@ export class MyComponent extends Component {
     save = () =&gt; someApi.save();
 }</code>
 </code></pre>
-<p>Compare it to manual handling of pending state:</p>
+<p>Compare that to manual handling of pending state:</p>
 <pre><code class="lang-javascript"><code class="source-code prettyprint">import React, { Component } from &apos;react&apos;;
 
 export class MyComponent extends Component {

@@ -18,6 +18,8 @@ export default class AsyncState extends Component {
         pendingGroupProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
         group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),
         trigger: PropTypes.string,
+        // if true, and a promise is resolved, but its payload is of type Error, the promise will be treated as if rejected
+        rejectResolvedErrors: PropTypes.string
     };
     static defaultProps = {
         successClass: 'success',
@@ -26,7 +28,8 @@ export default class AsyncState extends Component {
         errorDuration: 1000,
         pendingProp: ['isPending', 'disabled'],
         pendingGroupProp: ['disabled'],
-        trigger: 'onClick'
+        trigger: 'onClick',
+        rejectResolvedErrors: true
     };
     get child() {
         return React.Children.only(this.props.children);
@@ -102,25 +105,44 @@ export default class AsyncState extends Component {
         const promise = this.getPromise(callbackResult);
         // console.log('handleTrigger', {callback, callbackResult, promise});
         if (promise) {
+
+            const handleResult = () => { 
+                this.setStateSafely({
+                    isPending: false,
+                    hintSuccess: true,
+                    hintError: false
+                });
+                this.setGroupPending(this.props.group, false);
+                this._successTimeout = window.setTimeout(() => {
+                    this.setStateSafely({hintSuccess: false})
+                }, this.props.successDuration);
+            }
+            const handleError = () => { 
+                this.setStateSafely({
+                    isPending: false,
+                    hintError: true,
+                    hintSuccess: false
+                });
+                this.setGroupPending(this.props.group, false);
+                this._errorTimeout = window.setTimeout(() => {
+                    this.setStateSafely({hintError: false})
+                }, this.props.errorDuration);
+            }  
+
             this.clearTimeouts();
             this.setState({isPending: true});
             if (this.props.group) {
                 this.setGroupPending(this.props.group, true);
             }
-            // setup success mechanism
-            promise.then(() => {
-                // console.info('success!');
-                this.setStateSafely({isPending: false, hintSuccess: true, hintError: false});
-                this.setGroupPending(this.props.group, false);
-                this._successTimeout = window.setTimeout(() => this.setStateSafely({hintSuccess: false}), this.props.successDuration);
+            promise.catch(handleError);
+            promise.then((result) => {
+                if (this.props.rejectResolvedErrors && result instanceof Error) {
+                    return handleError(result)
+                }
+                return handleResult(result);
+                
             });
-            // setup error mechanism
-            promise.catch(() => {
-                // console.info('success!');
-                this.setStateSafely({isPending: false, hintError: true, hintSuccess: false});
-                this.setGroupPending(this.props.group, false);
-                this._errorTimeout = window.setTimeout(() => this.setStateSafely({hintError: false}), this.props.errorDuration);
-            });
+
         }
         return callbackResult;
     }

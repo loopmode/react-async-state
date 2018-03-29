@@ -3,7 +3,7 @@
     "__docId__": 0,
     "kind": "file",
     "name": "src/AsyncState.js",
-    "content": "import React, { Component } from 'react';\r\nimport PropTypes from 'prop-types';\r\nimport cx from 'classnames';\r\n\r\nconst groups = {\r\n    default: []\r\n};\r\n\r\nexport default class AsyncState extends Component {\r\n    static propTypes = {\r\n        successDuration: PropTypes.number,\r\n        errorDuration: PropTypes.number,\r\n        successClass: PropTypes.string,\r\n        errorClass: PropTypes.string,\r\n        children: PropTypes.element,\r\n        initialPending: PropTypes.bool,\r\n        pendingProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),\r\n        pendingGroupProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),\r\n        group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),\r\n        trigger: PropTypes.string,\r\n    };\r\n    static defaultProps = {\r\n        successClass: 'success',\r\n        successDuration: 1000,\r\n        errorClass: 'danger',\r\n        errorDuration: 1000,\r\n        pendingProp: ['isPending', 'disabled'],\r\n        pendingGroupProp: ['disabled'],\r\n        trigger: 'onClick'\r\n    };\r\n    get child() {\r\n        return React.Children.only(this.props.children);\r\n    }\r\n    state = {\r\n        isPending: this.initialPending,\r\n        isPendingGroup: false,\r\n        hintSuccess: false,\r\n        hintError: false,\r\n    };\r\n    componentDidMount() {\r\n        this._isMounted = true;\r\n        if (this.props.group) {\r\n            this.registerGroup(this.props.group);\r\n        }\r\n    }\r\n    componentWillReceiveProps(nextProps) {\r\n        if (nextProps.group !== this.props.group) {\r\n            this.unregisterGroup(this.props.group);\r\n            this.registerGroup(nextProps.group);\r\n        }\r\n    }\r\n    componentWillUnmount() {\r\n        this._isMounted = false;\r\n        this.clearTimeouts();\r\n        if (this.props.group) {\r\n            this.unregisterGroup(this.props.group);\r\n        }\r\n    }\r\n    setStateSafely(nextState) {\r\n        this._isMounted && this.setState(nextState);\r\n    }\r\n    render() {\r\n        return React.cloneElement(this.child, this.createChildProps(this.child));\r\n    }\r\n    createChildProps() {\r\n        const {successClass, errorClass, trigger} = this.props;\r\n        const {...childProps} = this.child.props;\r\n        if (childProps[trigger]) {\r\n            childProps[trigger] = this.handleTrigger;\r\n        }\r\n        const applyPendingProp = (props, value) => {\r\n            if (typeof value === 'string') {\r\n                props[value] = true;\r\n            }\r\n            else {\r\n                value.forEach(prop => props[prop] = true);\r\n            }\r\n        };\r\n        if (this.state.isPending) {\r\n            applyPendingProp(childProps, this.props.pendingProp);\r\n        }\r\n        if (this.state.isPendingGroup) {\r\n            applyPendingProp(childProps, this.props.pendingGroupProp);\r\n        }\r\n        childProps.className = cx(\r\n            childProps.className,\r\n            {[successClass]: this.state.hintSuccess},\r\n            {[errorClass]: this.state.hintError},\r\n        );\r\n        return childProps;\r\n    }\r\n    getPromise(value) {\r\n        if (value && typeof value.then === 'function') {\r\n            return value;\r\n        }\r\n        return undefined;\r\n    }\r\n    handleTrigger = (e) => {\r\n        const {trigger} = this.props;\r\n        const callback = this.child.props[trigger];\r\n        const callbackResult = typeof callback === 'function' && callback(e);\r\n        const promise = this.getPromise(callbackResult);\r\n        // console.log('handleTrigger', {callback, callbackResult, promise});\r\n        if (promise) {\r\n            this.clearTimeouts();\r\n            this.setState({isPending: true});\r\n            if (this.props.group) {\r\n                this.setGroupPending(this.props.group, true);\r\n            }\r\n            // setup success mechanism\r\n            promise.then(() => {\r\n                // console.info('success!');\r\n                this.setStateSafely({isPending: false, hintSuccess: true, hintError: false});\r\n                this.setGroupPending(this.props.group, false);\r\n                this._successTimeout = window.setTimeout(() => this.setStateSafely({hintSuccess: false}), this.props.successDuration);\r\n            });\r\n            // setup error mechanism\r\n            promise.catch(() => {\r\n                // console.info('success!');\r\n                this.setStateSafely({isPending: false, hintError: true, hintSuccess: false});\r\n                this.setGroupPending(this.props.group, false);\r\n                this._errorTimeout = window.setTimeout(() => this.setStateSafely({hintError: false}), this.props.errorDuration);\r\n            });\r\n        }\r\n        return callbackResult;\r\n    }\r\n\r\n\r\n    //-----------------------------------\r\n    //\r\n    // GROUP HANDLING\r\n    //\r\n    //-----------------------------------\r\n\r\n\r\n    clearTimeouts = () => {\r\n        window.clearTimeout(this._successTimeout);\r\n        window.clearTimeout(this._errorTimeout);\r\n    }\r\n    getGroupName(group) {\r\n        switch (typeof group) {\r\n            case 'boolean': return 'default';\r\n            case 'string': return group;\r\n            case 'function': return this.getGroupName(group(this));\r\n        }\r\n    }\r\n    registerGroup(group) {\r\n        if (group) {\r\n            const groupName = this.getGroupName(group);\r\n            groups[groupName] = [...(groups[groupName] || []), this];\r\n        }\r\n    }\r\n    unregisterGroup(group) {\r\n        if (group) {\r\n            const groupName = this.getGroupName(group);\r\n            groups[groupName] = (groups[groupName] || []).filter(component => component !== this);\r\n        }\r\n    }\r\n    setGroupPending(group, isPendingGroup) {\r\n        const groupName = this.getGroupName(group);\r\n        const groupMembers = groups[groupName];\r\n        // console.info('setGroupPending', {groupName, groupMembers});\r\n        if (groupMembers) {\r\n            groupMembers\r\n                .filter(component => component !== this)\r\n                .forEach(component => {\r\n                    // console.info('setGroupPending', {component, isPendingGroup});\r\n                    component.setStateSafely({isPendingGroup});\r\n                })\r\n            ;\r\n        }\r\n    }\r\n}\r\n",
+    "content": "import React, { Component } from 'react';\r\nimport PropTypes from 'prop-types';\r\nimport cx from 'classnames';\r\n\r\nconst groups = {\r\n    default: []\r\n};\r\n\r\nexport default class AsyncState extends Component {\r\n    static propTypes = {\r\n        successDuration: PropTypes.number,\r\n        errorDuration: PropTypes.number,\r\n        successClass: PropTypes.string,\r\n        errorClass: PropTypes.string,\r\n        children: PropTypes.element,\r\n        initialPending: PropTypes.bool,\r\n        pendingProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),\r\n        pendingGroupProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),\r\n        group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),\r\n        trigger: PropTypes.string,\r\n        // if true, and a promise is resolved, but its payload is of type Error, the promise will be treated as if rejected\r\n        rejectResolvedErrors: PropTypes.string\r\n    };\r\n    static defaultProps = {\r\n        successClass: 'success',\r\n        successDuration: 1000,\r\n        errorClass: 'danger',\r\n        errorDuration: 1000,\r\n        pendingProp: ['isPending', 'disabled'],\r\n        pendingGroupProp: ['disabled'],\r\n        trigger: 'onClick',\r\n        rejectResolvedErrors: true\r\n    };\r\n    get child() {\r\n        return React.Children.only(this.props.children);\r\n    }\r\n    state = {\r\n        isPending: this.initialPending,\r\n        isPendingGroup: false,\r\n        hintSuccess: false,\r\n        hintError: false,\r\n    };\r\n    componentDidMount() {\r\n        this._isMounted = true;\r\n        if (this.props.group) {\r\n            this.registerGroup(this.props.group);\r\n        }\r\n    }\r\n    componentWillReceiveProps(nextProps) {\r\n        if (nextProps.group !== this.props.group) {\r\n            this.unregisterGroup(this.props.group);\r\n            this.registerGroup(nextProps.group);\r\n        }\r\n    }\r\n    componentWillUnmount() {\r\n        this._isMounted = false;\r\n        this.clearTimeouts();\r\n        if (this.props.group) {\r\n            this.unregisterGroup(this.props.group);\r\n        }\r\n    }\r\n    setStateSafely(nextState) {\r\n        this._isMounted && this.setState(nextState);\r\n    }\r\n    render() {\r\n        return React.cloneElement(this.child, this.createChildProps(this.child));\r\n    }\r\n    createChildProps() {\r\n        const {successClass, errorClass, trigger} = this.props;\r\n        const {...childProps} = this.child.props;\r\n        if (childProps[trigger]) {\r\n            childProps[trigger] = this.handleTrigger;\r\n        }\r\n        const applyPendingProp = (props, value) => {\r\n            if (typeof value === 'string') {\r\n                props[value] = true;\r\n            }\r\n            else {\r\n                value.forEach(prop => props[prop] = true);\r\n            }\r\n        };\r\n        if (this.state.isPending) {\r\n            applyPendingProp(childProps, this.props.pendingProp);\r\n        }\r\n        if (this.state.isPendingGroup) {\r\n            applyPendingProp(childProps, this.props.pendingGroupProp);\r\n        }\r\n        childProps.className = cx(\r\n            childProps.className,\r\n            {[successClass]: this.state.hintSuccess},\r\n            {[errorClass]: this.state.hintError},\r\n        );\r\n        return childProps;\r\n    }\r\n    getPromise(value) {\r\n        if (value && typeof value.then === 'function') {\r\n            return value;\r\n        }\r\n        return undefined;\r\n    }\r\n    handleTrigger = (e) => {\r\n        const {trigger} = this.props;\r\n        const callback = this.child.props[trigger];\r\n        const callbackResult = typeof callback === 'function' && callback(e);\r\n        const promise = this.getPromise(callbackResult);\r\n        // console.log('handleTrigger', {callback, callbackResult, promise});\r\n        if (promise) {\r\n\r\n            const handleResult = () => { \r\n                this.setStateSafely({\r\n                    isPending: false,\r\n                    hintSuccess: true,\r\n                    hintError: false\r\n                });\r\n                this.setGroupPending(this.props.group, false);\r\n                this._successTimeout = window.setTimeout(() => {\r\n                    this.setStateSafely({hintSuccess: false})\r\n                }, this.props.successDuration);\r\n            }\r\n            const handleError = () => { \r\n                this.setStateSafely({\r\n                    isPending: false,\r\n                    hintError: true,\r\n                    hintSuccess: false\r\n                });\r\n                this.setGroupPending(this.props.group, false);\r\n                this._errorTimeout = window.setTimeout(() => {\r\n                    this.setStateSafely({hintError: false})\r\n                }, this.props.errorDuration);\r\n            }  \r\n\r\n            this.clearTimeouts();\r\n            this.setState({isPending: true});\r\n            if (this.props.group) {\r\n                this.setGroupPending(this.props.group, true);\r\n            }\r\n            promise.catch(handleError);\r\n            promise.then((result) => {\r\n                if (this.props.rejectResolvedErrors && result instanceof Error) {\r\n                    return handleError(result)\r\n                }\r\n                return handleResult(result);\r\n                \r\n            });\r\n\r\n        }\r\n        return callbackResult;\r\n    }\r\n\r\n\r\n    //-----------------------------------\r\n    //\r\n    // GROUP HANDLING\r\n    //\r\n    //-----------------------------------\r\n\r\n\r\n    clearTimeouts = () => {\r\n        window.clearTimeout(this._successTimeout);\r\n        window.clearTimeout(this._errorTimeout);\r\n    }\r\n    getGroupName(group) {\r\n        switch (typeof group) {\r\n            case 'boolean': return 'default';\r\n            case 'string': return group;\r\n            case 'function': return this.getGroupName(group(this));\r\n        }\r\n    }\r\n    registerGroup(group) {\r\n        if (group) {\r\n            const groupName = this.getGroupName(group);\r\n            groups[groupName] = [...(groups[groupName] || []), this];\r\n        }\r\n    }\r\n    unregisterGroup(group) {\r\n        if (group) {\r\n            const groupName = this.getGroupName(group);\r\n            groups[groupName] = (groups[groupName] || []).filter(component => component !== this);\r\n        }\r\n    }\r\n    setGroupPending(group, isPendingGroup) {\r\n        const groupName = this.getGroupName(group);\r\n        const groupMembers = groups[groupName];\r\n        // console.info('setGroupPending', {groupName, groupMembers});\r\n        if (groupMembers) {\r\n            groupMembers\r\n                .filter(component => component !== this)\r\n                .forEach(component => {\r\n                    // console.info('setGroupPending', {component, isPendingGroup});\r\n                    component.setStateSafely({isPendingGroup});\r\n                })\r\n            ;\r\n        }\r\n    }\r\n}\r\n",
     "static": true,
     "longname": "src/AsyncState.js",
     "access": null,
@@ -80,7 +80,7 @@
     ],
     "type": {
       "types": [
-        "{\"successDuration\": *, \"errorDuration\": *, \"successClass\": *, \"errorClass\": *, \"children\": *, \"initialPending\": *, \"pendingProp\": *, \"pendingGroupProp\": *, \"group\": *, \"trigger\": *}"
+        "{\"successDuration\": *, \"errorDuration\": *, \"successClass\": *, \"errorClass\": *, \"children\": *, \"initialPending\": *, \"pendingProp\": *, \"pendingGroupProp\": *, \"group\": *, \"trigger\": *, \"rejectResolvedErrors\": *}"
       ]
     }
   },
@@ -93,7 +93,7 @@
     "longname": "src/AsyncState.js~AsyncState.defaultProps",
     "access": null,
     "description": null,
-    "lineNumber": 22,
+    "lineNumber": 24,
     "undocument": true,
     "unknown": [
       {
@@ -103,7 +103,7 @@
     ],
     "type": {
       "types": [
-        "{\"successClass\": string, \"successDuration\": number, \"errorClass\": string, \"errorDuration\": number, \"pendingProp\": *, \"pendingGroupProp\": *, \"trigger\": string}"
+        "{\"successClass\": string, \"successDuration\": number, \"errorClass\": string, \"errorDuration\": number, \"pendingProp\": *, \"pendingGroupProp\": *, \"trigger\": string, \"rejectResolvedErrors\": boolean}"
       ]
     }
   },
@@ -118,7 +118,7 @@
     "longname": "src/AsyncState.js~AsyncState#child",
     "access": null,
     "description": null,
-    "lineNumber": 31,
+    "lineNumber": 34,
     "undocument": true,
     "unknown": [
       {
@@ -141,7 +141,7 @@
     "longname": "src/AsyncState.js~AsyncState#state",
     "access": null,
     "description": null,
-    "lineNumber": 34,
+    "lineNumber": 37,
     "undocument": true,
     "unknown": [
       {
@@ -166,7 +166,7 @@
     "longname": "src/AsyncState.js~AsyncState#componentDidMount",
     "access": null,
     "description": null,
-    "lineNumber": 40,
+    "lineNumber": 43,
     "undocument": true,
     "unknown": [
       {
@@ -185,7 +185,7 @@
     "longname": "src/AsyncState.js~AsyncState#_isMounted",
     "access": null,
     "description": null,
-    "lineNumber": 41,
+    "lineNumber": 44,
     "undocument": true,
     "unknown": [
       {
@@ -210,7 +210,7 @@
     "longname": "src/AsyncState.js~AsyncState#componentWillReceiveProps",
     "access": null,
     "description": null,
-    "lineNumber": 46,
+    "lineNumber": 49,
     "undocument": true,
     "unknown": [
       {
@@ -238,7 +238,7 @@
     "longname": "src/AsyncState.js~AsyncState#componentWillUnmount",
     "access": null,
     "description": null,
-    "lineNumber": 52,
+    "lineNumber": 55,
     "undocument": true,
     "unknown": [
       {
@@ -257,7 +257,7 @@
     "longname": "src/AsyncState.js~AsyncState#_isMounted",
     "access": null,
     "description": null,
-    "lineNumber": 53,
+    "lineNumber": 56,
     "undocument": true,
     "unknown": [
       {
@@ -282,7 +282,7 @@
     "longname": "src/AsyncState.js~AsyncState#setStateSafely",
     "access": null,
     "description": null,
-    "lineNumber": 59,
+    "lineNumber": 62,
     "undocument": true,
     "unknown": [
       {
@@ -308,7 +308,7 @@
     "longname": "src/AsyncState.js~AsyncState#_isMounted",
     "access": null,
     "description": null,
-    "lineNumber": 60,
+    "lineNumber": 63,
     "undocument": true,
     "unknown": [
       {
@@ -333,7 +333,7 @@
     "longname": "src/AsyncState.js~AsyncState#render",
     "access": null,
     "description": null,
-    "lineNumber": 62,
+    "lineNumber": 65,
     "undocument": true,
     "unknown": [
       {
@@ -359,7 +359,7 @@
     "longname": "src/AsyncState.js~AsyncState#createChildProps",
     "access": null,
     "description": null,
-    "lineNumber": 65,
+    "lineNumber": 68,
     "undocument": true,
     "unknown": [
       {
@@ -385,7 +385,7 @@
     "longname": "src/AsyncState.js~AsyncState#getPromise",
     "access": null,
     "description": null,
-    "lineNumber": 92,
+    "lineNumber": 95,
     "undocument": true,
     "unknown": [
       {
@@ -416,7 +416,7 @@
     "longname": "src/AsyncState.js~AsyncState#handleTrigger",
     "access": null,
     "description": null,
-    "lineNumber": 98,
+    "lineNumber": 101,
     "undocument": true,
     "unknown": [
       {
@@ -438,7 +438,7 @@
     "longname": "src/AsyncState.js~AsyncState#_successTimeout",
     "access": null,
     "description": null,
-    "lineNumber": 115,
+    "lineNumber": 116,
     "undocument": true,
     "unknown": [
       {
@@ -460,7 +460,7 @@
     "longname": "src/AsyncState.js~AsyncState#_errorTimeout",
     "access": null,
     "description": null,
-    "lineNumber": 122,
+    "lineNumber": 127,
     "undocument": true,
     "unknown": [
       {
@@ -483,7 +483,7 @@
     "longname": "src/AsyncState.js~AsyncState#clearTimeouts",
     "access": null,
     "description": null,
-    "lineNumber": 136,
+    "lineNumber": 158,
     "undocument": true,
     "unknown": [
       {
@@ -508,7 +508,7 @@
     "longname": "src/AsyncState.js~AsyncState#getGroupName",
     "access": null,
     "description": null,
-    "lineNumber": 140,
+    "lineNumber": 162,
     "undocument": true,
     "unknown": [
       {
@@ -541,7 +541,7 @@
     "longname": "src/AsyncState.js~AsyncState#registerGroup",
     "access": null,
     "description": null,
-    "lineNumber": 147,
+    "lineNumber": 169,
     "undocument": true,
     "unknown": [
       {
@@ -569,7 +569,7 @@
     "longname": "src/AsyncState.js~AsyncState#unregisterGroup",
     "access": null,
     "description": null,
-    "lineNumber": 153,
+    "lineNumber": 175,
     "undocument": true,
     "unknown": [
       {
@@ -597,7 +597,7 @@
     "longname": "src/AsyncState.js~AsyncState#setGroupPending",
     "access": null,
     "description": null,
-    "lineNumber": 159,
+    "lineNumber": 181,
     "undocument": true,
     "unknown": [
       {
