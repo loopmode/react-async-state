@@ -19,7 +19,7 @@ export default class AsyncState extends Component {
         group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),
         trigger: PropTypes.string,
         // if true, and a promise is resolved, but its payload is of type Error, the promise will be treated as if rejected
-        rejectResolvedErrors: PropTypes.string
+        rejectResolvedErrors: PropTypes.bool
     };
     static defaultProps = {
         successClass: 'success',
