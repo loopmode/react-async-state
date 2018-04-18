@@ -1,13 +1,14 @@
 {
   "name": "@loopmode/async-state",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "main": "lib/index.js",
   "scripts": {
     "docs": "esdoc",
     "clean": "rimraf lib/*",
-    "build": "rimraf lib/* && babel src --out-dir lib",
+    "build": "babel src --out-dir lib",
     "watch": "babel src --out-dir lib --watch",
-    "prepublish": "yarn build"
+    "prepublish": "yarn lint && rimraf lib/* && yarn build",
+    "lint": "eslint \"src/**/*.js?(x)\""
   },
   "keywords": [
     "react",
@@ -32,11 +33,18 @@
     "babel-preset-stage-1": "^6.24.1",
     "babel-register": "^6.24.1",
     "esdoc": "^0.5.2",
+    "eslint": "^4.19.1",
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-plugin-prettier": "^2.6.0",
+    "eslint-plugin-react": "^7.7.0",
+    "prettier": "^1.12.1",
+    "prettier-eslint": "^8.8.1",
     "prop-types": "^15.5.10",
     "react": "^15.3.1",
     "rimraf": "^2.6.1"
   },
   "dependencies": {
+    "babel-eslint": "^8.2.3",
     "classnames": "^2.2.5"
   }
 }
