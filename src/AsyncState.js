@@ -11,20 +11,30 @@ export default class AsyncState extends Component {
         successDuration: PropTypes.number,
         errorDuration: PropTypes.number,
         successClass: PropTypes.string,
+        successProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
         errorClass: PropTypes.string,
+        errorProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
         children: PropTypes.element,
         initialPending: PropTypes.bool,
         pendingProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
         pendingGroupProp: PropTypes.oneOfType([PropTypes.string, PropTypes.array]),
         group: PropTypes.oneOfType([PropTypes.string, PropTypes.func, PropTypes.bool]),
         trigger: PropTypes.string,
-        // if true, and a promise is resolved, but its payload is of type Error, the promise will be treated as if rejected
-        rejectResolvedErrors: PropTypes.bool
+        // if true, and a promise is resolved, but its payload is of type Error, the promise will be treated as if rejected - the component will indicate failure
+        rejectResolvedErrors: PropTypes.bool,
+        onPending: PropTypes.func,
+        onFinished: PropTypes.func,
+        onSuccess: PropTypes.func,
+        onSuccessEnd: PropTypes.func,
+        onError: PropTypes.func,
+        onErrorEnd: PropTypes.func
     };
     static defaultProps = {
         successClass: 'success',
+        successProps: {},
         successDuration: 1000,
         errorClass: 'danger',
+        errorProps: {},
         errorDuration: 1000,
         pendingProp: ['isPending', 'disabled'],
         pendingGroupProp: ['disabled'],
@@ -35,10 +45,10 @@ export default class AsyncState extends Component {
         return React.Children.only(this.props.children);
     }
     state = {
-        isPending: this.initialPending,
+        isPending: this.props.initialPending,
         isPendingGroup: false,
-        hintSuccess: false,
-        hintError: false,
+        indicateSuccess: false,
+        indicateError: false
     };
     componentDidMount() {
         this._isMounted = true;
@@ -59,24 +69,24 @@ export default class AsyncState extends Component {
             this.unregisterGroup(this.props.group);
         }
     }
-    setStateSafely(nextState) {
-        this._isMounted && this.setState(nextState);
+    setState(nextState) {
+        this._isMounted && super.setState(nextState);
     }
     render() {
         return React.cloneElement(this.child, this.createChildProps(this.child));
     }
     createChildProps() {
-        const {successClass, errorClass, trigger} = this.props;
-        const {...childProps} = this.child.props;
+        const { successClass, successProps, errorClass, errorProps, trigger } = this.props;
+        const { ...childProps } = this.child.props;
+        const { indicateSuccess, indicateError } = this.state;
         if (childProps[trigger]) {
             childProps[trigger] = this.handleTrigger;
         }
         const applyPendingProp = (props, value) => {
             if (typeof value === 'string') {
                 props[value] = true;
-            }
-            else {
-                value.forEach(prop => props[prop] = true);
+            } else {
+                value.forEach(prop => (props[prop] = true));
             }
         };
         if (this.state.isPending) {
@@ -87,9 +97,22 @@ export default class AsyncState extends Component {
         }
         childProps.className = cx(
             childProps.className,
-            {[successClass]: this.state.hintSuccess},
-            {[errorClass]: this.state.hintError},
+            { [successClass]: indicateSuccess },
+            { [errorClass]: indicateError }
         );
+        if (indicateSuccess && successProps) {
+            Object.assign(
+                childProps,
+                typeof successProps === 'function' ? successProps(this.props, this.state) : successProps
+            );
+        }
+        if (indicateError && errorProps) {
+            Object.assign(
+                childProps,
+                typeof errorProps === 'function' ? errorProps(this.props, this.state) : errorProps
+            );
+        }
+
         return childProps;
     }
     getPromise(value) {
@@ -98,55 +121,72 @@ export default class AsyncState extends Component {
         }
         return undefined;
     }
-    handleTrigger = (e) => {
-        const {trigger} = this.props;
+    handleTrigger = e => {
+        const { trigger } = this.props;
         const callback = this.child.props[trigger];
         const callbackResult = typeof callback === 'function' && callback(e);
         const promise = this.getPromise(callbackResult);
         // console.log('handleTrigger', {callback, callbackResult, promise});
         if (promise) {
-
-            const handleResult = () => { 
-                this.setStateSafely({
+            if (this.props.onPending) {
+                this.props.onPending();
+            }
+            const handleResult = result => {
+                if (this.props.onSuccess) {
+                    this.props.onSuccess(result);
+                }
+                if (this.props.onFinished) {
+                    this.props.onFinished({ result });
+                }
+                this.setState({
                     isPending: false,
-                    hintSuccess: true,
-                    hintError: false
+                    indicateSuccess: true,
+                    indicateError: false
                 });
                 this.setGroupPending(this.props.group, false);
                 this._successTimeout = window.setTimeout(() => {
-                    this.setStateSafely({hintSuccess: false})
+                    this.setState({ indicateSuccess: false });
+                    if (this.props.onSuccessEnd) {
+                        this.props.onSuccessEnd();
+                    }
                 }, this.props.successDuration);
-            }
-            const handleError = () => { 
-                this.setStateSafely({
+            };
+            const handleError = error => {
+                if (this.props.onError) {
+                    this.props.onError(error);
+                }
+                if (this.props.onFinished) {
+                    this.props.onFinished({ error });
+                }
+                this.setState({
                     isPending: false,
-                    hintError: true,
-                    hintSuccess: false
+                    indicateError: true,
+                    indicateSuccess: false
                 });
                 this.setGroupPending(this.props.group, false);
                 this._errorTimeout = window.setTimeout(() => {
-                    this.setStateSafely({hintError: false})
+                    this.setState({ indicateError: false });
+                    if (this.props.onErrorEnd) {
+                        this.props.onErrorEnd();
+                    }
                 }, this.props.errorDuration);
-            }  
+            };
 
             this.clearTimeouts();
-            this.setState({isPending: true});
+            this.setState({ isPending: true });
             if (this.props.group) {
                 this.setGroupPending(this.props.group, true);
             }
             promise.catch(handleError);
-            promise.then((result) => {
+            promise.then(result => {
                 if (this.props.rejectResolvedErrors && result instanceof Error) {
-                    return handleError(result)
+                    return handleError(result);
                 }
                 return handleResult(result);
-                
             });
-
         }
         return callbackResult;
-    }
-
+    };
 
     //-----------------------------------
     //
@@ -154,16 +194,18 @@ export default class AsyncState extends Component {
     //
     //-----------------------------------
 
-
     clearTimeouts = () => {
         window.clearTimeout(this._successTimeout);
         window.clearTimeout(this._errorTimeout);
-    }
+    };
     getGroupName(group) {
         switch (typeof group) {
-            case 'boolean': return 'default';
-            case 'string': return group;
-            case 'function': return this.getGroupName(group(this));
+            case 'boolean':
+                return 'default';
+            case 'string':
+                return group;
+            case 'function':
+                return this.getGroupName(group(this));
         }
     }
     registerGroup(group) {
@@ -183,13 +225,10 @@ export default class AsyncState extends Component {
         const groupMembers = groups[groupName];
         // console.info('setGroupPending', {groupName, groupMembers});
         if (groupMembers) {
-            groupMembers
-                .filter(component => component !== this)
-                .forEach(component => {
-                    // console.info('setGroupPending', {component, isPendingGroup});
-                    component.setStateSafely({isPendingGroup});
-                })
-            ;
+            groupMembers.filter(component => component !== this).forEach(component => {
+                // console.info('setGroupPending', {component, isPendingGroup});
+                component.setState({ isPendingGroup });
+            });
         }
     }
 }
