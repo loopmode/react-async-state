@@ -1,3 +1,7 @@
+### 0.4.0
+
+*   Propagate unknown props
+
 ### 0.3.0
 
 *   add `successProps` and `errorProps` props

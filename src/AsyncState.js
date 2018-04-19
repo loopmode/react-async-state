@@ -29,6 +29,27 @@ export default class AsyncState extends Component {
         onError: PropTypes.func,
         onErrorEnd: PropTypes.func
     };
+    ownProps = [
+        'successDuration',
+        'errorDuration',
+        'successClass',
+        'successProps',
+        'errorClass',
+        'errorProps',
+        'children',
+        'initialPending',
+        'pendingProp',
+        'pendingGroupProp',
+        'group',
+        'trigger',
+        'rejectResolvedErrors',
+        'onPending',
+        'onFinished',
+        'onSuccess',
+        'onSuccessEnd',
+        'onError',
+        'onErrorEnd'
+    ];
     static defaultProps = {
         successClass: 'success',
         successProps: {},
@@ -76,12 +97,22 @@ export default class AsyncState extends Component {
         return React.cloneElement(this.child, this.createChildProps(this.child));
     }
     createChildProps() {
-        const { successClass, successProps, errorClass, errorProps, trigger } = this.props;
+        const { successClass, successProps, errorClass, errorProps, trigger, ...ownProps } = this.props;
         const { ...childProps } = this.child.props;
         const { indicateSuccess, indicateError } = this.state;
+
+        const propagatedProps = Object.keys(ownProps).reduce((result, key) => {
+            if (this.ownProps.includes(key)) return result;
+            result[key] = ownProps[key];
+            return result;
+        }, {});
+
+        Object.assign(childProps, propagatedProps);
+
         if (childProps[trigger]) {
             childProps[trigger] = this.handleTrigger;
         }
+
         const applyPendingProp = (props, value) => {
             if (typeof value === 'string') {
                 props[value] = true;
